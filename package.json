@@ -13,6 +13,7 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
 	},
 	"dependencies": {
+		"@codesandbox/sandpack-react": "^2.20.0",
 		"@heyputer/puter.js": "^2.2.10",
 		"@opennextjs/cloudflare": "^1.15.1",
 		"class-variance-authority": "^0.7.1",

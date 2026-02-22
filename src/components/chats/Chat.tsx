@@ -4,6 +4,7 @@ import { Input } from "../ui/input";
 import { cn } from "@/lib/utils";
 import { getUserMessage, systemMessage } from "@/helpers/prompts";
 import puter from "@heyputer/puter.js";
+import { Sandpack } from "@codesandbox/sandpack-react";
 
 export default function ChatInterface() {
   const [prompt, setPrompt] = useState("");
@@ -44,14 +45,26 @@ export default function ChatInterface() {
           },
         );
         const messageObj = response?.message as any;
+        const rawContent = messageObj?.content || "";
+        const cleanedCode = rawContent
+          .replace(/```(?:javascript|js|typescript|ts)?\n/g, "") // Remove opening block
+          .replace(/```$/g, "") // Remove closing block
+          .trim();
 
-        // Extract Data
-        const generatedCode = messageObj?.content || "";
         const generatedReasoning =
           messageObj?.reasoning ||
           messageObj?.reasoning_details?.[0]?.text ||
           "";
-        setCode(generatedCode);
+
+        const codeWithImports = `
+            import * as THREE from 'three';
+            import gsap from 'gsap';
+            import { animate as motionAnimate } from 'motion';
+
+            ${cleanedCode}
+            `;
+
+        setCode(codeWithImports);
         setReasoning(generatedReasoning);
       } catch (err) {
         console.error("Puter AI Error:", err);
@@ -121,9 +134,61 @@ export default function ChatInterface() {
             <p className="font-mono text-xs">Generating Three.js Scene...</p>
           </div>
         ) : (
-          <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap">
-            {code || "Your 3D logic will appear here after prompt."}
-          </pre>
+          <div>
+            <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap">
+              {code || "Your 3D logic will appear here after prompt."}
+            </pre>
+            <Sandpack
+              theme="light"
+              template="vanilla"
+              customSetup={{
+                dependencies: {
+                  three: "latest",
+                  gsap: "latest",
+                  motion: "latest",
+                },
+              }}
+              options={{
+                showNavigator: false,
+                showTabs: true,
+                showLineNumbers: true,
+                editorHeight: "100%",
+                classes: {
+                  "sp-wrapper": "h-full",
+                  "sp-layout": "h-full flex",
+                  "sp-editor": "h-full w-1/2",
+                  "sp-preview": "h-full w-1/2",
+                },
+              }}
+              files={{
+                // Ensure the canvas exists and covers the full preview window
+                "/index.html": {
+                  code: `<!DOCTYPE html>
+                  <html>
+                  <head>
+                    <title>Three.js Sandbox</title>
+                    <style>
+                      body { margin: 0; overflow: hidden; background-color: #050505; }
+                      canvas { display: block; width: 100vw; height: 100vh; }
+                    </style>
+                  </head>
+                  <body>
+                    <canvas id="canvas"></canvas>
+                    <script src="/index.js"></script>
+                  </body>
+                  </html>`,
+                  hidden: true, // Hides HTML from the user's editor tabs
+                },
+                // This is where the AI's logic gets injected
+                "/index.js": {
+                  code:
+                    code ||
+                    "// Your generated Three.js logic will appear here.",
+                  active: true,
+                },
+              }}
+            />
+          </div>
         )}
       </section>
     </main>

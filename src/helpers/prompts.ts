@@ -16,7 +16,8 @@ Output:
 - Code must be modular and clean.
 - Include comments explaining 3D math (e.g., converting degrees to radians).
 - Focus on interactivity: How the 3D world responds to the mouse, scroll, or time.
-NOTE: If asked for simple things please dont makke it complex .`;
+NOTE: If asked for simple things please dont makke it complex .
+NOTE V-IMP: DON'T GIVE EXPLANATION GIVE ONLY CODE IN VANILLA FORMAT AND DONT ADD ANY COMMENTS GIVE JUST PURE CODE`;
 
 export const systemMessage = {
   role: "system",
