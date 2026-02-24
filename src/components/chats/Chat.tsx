@@ -4,7 +4,12 @@ import { Input } from "../ui/input";
 import { cn } from "@/lib/utils";
 import { getUserMessage, systemMessage } from "@/helpers/prompts";
 import puter from "@heyputer/puter.js";
-import { Sandpack } from "@codesandbox/sandpack-react";
+import {
+  SandpackProvider,
+  SandpackLayout,
+  SandpackCodeEditor,
+  SandpackPreview,
+} from "@codesandbox/sandpack-react";
 
 export default function ChatInterface() {
   const [prompt, setPrompt] = useState("");
@@ -47,8 +52,9 @@ export default function ChatInterface() {
         const messageObj = response?.message as any;
         const rawContent = messageObj?.content || "";
         const cleanedCode = rawContent
-          .replace(/```(?:javascript|js|typescript|ts)?\n/g, "") // Remove opening block
-          .replace(/```$/g, "") // Remove closing block
+          .replace(/^```(javascript|js|typescript|ts)?\n?/im, "") // Remove opening block
+          .replace(/```\s*$/im, "") // Remove closing block
+          .replace(/^import .*;$/gm, "") // Strip any imports the AI stubbornly included
           .trim();
 
         const generatedReasoning =
@@ -56,13 +62,11 @@ export default function ChatInterface() {
           messageObj?.reasoning_details?.[0]?.text ||
           "";
 
-        const codeWithImports = `
-            import * as THREE from 'three';
-            import gsap from 'gsap';
-            import { animate as motionAnimate } from 'motion';
+        const codeWithImports = `import * as THREE from 'three';
+                                  import gsap from 'gsap';
+                                  import { animate as motionAnimate } from 'motion';
 
-            ${cleanedCode}
-            `;
+                                  ${cleanedCode}`;
 
         setCode(codeWithImports);
         setReasoning(generatedReasoning);
@@ -125,71 +129,84 @@ export default function ChatInterface() {
 
       {/* Code Sandbox Section */}
       <section
-        className="w-1/2 h-full border-2 border-neutral-600 hover:border-neutral-500 rounded-md bg-neutral-900 p-4 overflow-auto"
+        className="w-1/2 h-full border-2 border-neutral-600 hover:border-neutral-500 rounded-md bg-neutral-900 overflow-hidden relative"
         id="code-sandbox"
       >
-        {isLoading && !code ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-neutral-500">
-            <div className="w-6 h-6 border-2 border-t-amber-500 border-neutral-700 rounded-full animate-spin" />
+        {isLoading && !code && (
+          <div className="absolute inset-0 z-10 bg-neutral-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-neutral-500">
+            <div className="w-8 h-8 border-2 border-t-amber-500 border-neutral-700 rounded-full animate-spin" />
             <p className="font-mono text-xs">Generating Three.js Scene...</p>
           </div>
-        ) : (
-          <div>
-            <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap">
-              {code || "Your 3D logic will appear here after prompt."}
-            </pre>
-            <Sandpack
-              theme="light"
-              template="vanilla"
-              customSetup={{
-                dependencies: {
-                  three: "latest",
-                  gsap: "latest",
-                  motion: "latest",
-                },
-              }}
-              options={{
-                showNavigator: false,
-                showTabs: true,
-                showLineNumbers: true,
-                editorHeight: "100%",
-                classes: {
-                  "sp-wrapper": "h-full",
-                  "sp-layout": "h-full flex",
-                  "sp-editor": "h-full w-1/2",
-                  "sp-preview": "h-full w-1/2",
-                },
-              }}
-              files={{
-                // Ensure the canvas exists and covers the full preview window
-                "/index.html": {
-                  code: `<!DOCTYPE html>
-                  <html>
-                  <head>
-                    <title>Three.js Sandbox</title>
-                    <style>
-                      body { margin: 0; overflow: hidden; background-color: #050505; }
-                      canvas { display: block; width: 100vw; height: 100vh; }
-                    </style>
-                  </head>
-                  <body>
-                    <canvas id="canvas"></canvas>
-                    <script src="/index.js"></script>
-                  </body>
-                  </html>`,
-                  hidden: true, // Hides HTML from the user's editor tabs
-                },
-                // This is where the AI's logic gets injected
-                "/index.js": {
-                  code:
-                    code ||
-                    "// Your generated Three.js logic will appear here.",
-                  active: true,
-                },
-              }}
-            />
-          </div>
         )}
+
+        {/* Crucial Fix: Wrap Provider in a div that strictly fills the section using absolute positioning */}
+        <div className="absolute inset-0 w-full h-full flex flex-col">
+          <SandpackProvider
+            theme="light"
+            template="vanilla"
+            customSetup={{
+              dependencies: {
+                three: "latest",
+                gsap: "latest",
+                motion: "latest",
+              },
+            }}
+            files={{
+              "/index.html": {
+                code: `<!DOCTYPE html>
+<html>
+<head>
+  <title>Three.js Sandbox</title>
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #050505; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script type="module" src="/index.js"></script>
+</body>
+</html>`,
+                hidden: true,
+              },
+              "/index.js": {
+                code:
+                  code ||
+                  "// Enter a prompt on the left to generate a 3D scene.\n// Code will appear here.",
+                active: true,
+              },
+            }}
+          >
+            {/* Inline styles completely override Sandpack's stubborn internal CSS layout */}
+            <SandpackLayout
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                borderRadius: 0,
+                border: "none",
+              }}
+            >
+              {/* Top Half: Preview strictly takes up 50% */}
+              <SandpackPreview
+                style={{ height: "70%", flex: "1 1 50%" }}
+                showNavigator={false}
+              />
+
+              {/* Bottom Half: Editor strictly takes up 50% and scrolls internally */}
+              <SandpackCodeEditor
+                style={{
+                  height: "30%",
+                  flex: "1 1 50%",
+                  borderTop: "2px solid #404040",
+                  overflow: "auto",
+                }}
+                showTabs={true}
+                showLineNumbers={true}
+              />
+            </SandpackLayout>
+          </SandpackProvider>
+        </div>
       </section>
     </main>
   );
