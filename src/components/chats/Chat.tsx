@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { Input } from "../ui/input";
 import { cn } from "@/lib/utils";
-import { getUserMessage, systemMessage } from "@/helpers/prompts";
 import puter from "@heyputer/puter.js";
+import { getUserMessage, systemMessage } from "@/helpers/prompts";
 import {
   SandpackProvider,
   SandpackCodeEditor,
@@ -26,6 +26,16 @@ export default function ChatInterface() {
       clearTimeout(handler);
     };
   }, [prompt]);
+
+  // Trigger the download inside the Sandpack iframe
+  function handleDownloadModel() {
+    const iframes = document.querySelectorAll("iframe");
+    iframes.forEach((iframe) => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage("DOWNLOAD_GLTF", "*");
+      }
+    });
+  }
 
   async function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
@@ -61,11 +71,39 @@ export default function ChatInterface() {
           messageObj?.reasoning_details?.[0]?.text ||
           "";
 
+        // Inject the imports and the hidden download listener
         const codeWithImports = `import * as THREE from 'three';
 import gsap from 'gsap';
 import { animate as motionAnimate } from 'motion';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 
-${cleanedCode}`;
+${cleanedCode}
+
+// --- INJECTED DOWNLOAD LISTENER ---
+window.addEventListener('message', (event) => {
+  if (event.data === 'DOWNLOAD_GLTF') {
+    if (!window.scene) {
+      console.error('Scene not found! Ensure window.scene = scene; is set by the AI.');
+      return;
+    }
+    
+    const exporter = new GLTFExporter();
+    exporter.parse(
+      window.scene,
+      (gltf) => {
+        const blob = new Blob([gltf], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'ai-generated-scene.glb';
+        link.click();
+        URL.revokeObjectURL(url);
+      },
+      (error) => console.error('GLTF export error:', error),
+      { binary: true } // Export as .glb
+    );
+  }
+});`;
 
         setCode(codeWithImports);
         setReasoning(generatedReasoning);
@@ -76,16 +114,6 @@ ${cleanedCode}`;
         setIsLoading(false);
       }
     }
-  }
-
-  // Trigger the download inside the Sandpack iframe
-  function handleDownloadModel() {
-    const iframes = document.querySelectorAll("iframe");
-    iframes.forEach((iframe) => {
-      if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage("DOWNLOAD_GLTF", "*");
-      }
-    });
   }
 
   return (
@@ -185,18 +213,40 @@ ${cleanedCode}`;
               },
             }}
           >
-            {/* Custom Layout Wrapper replacing SandpackLayout */}
             <div className="w-full h-full overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-neutral-900">
-              {/* TOP SECTION (PAGE 1): Preview covers 100% of the height */}
+              {/* TOP SECTION (PAGE 1) */}
               <div
                 id="preview-container"
                 className="w-full h-full relative shrink-0 snap-start bg-black"
               >
-                {/* Notice we pass strict style height to the component itself */}
                 <SandpackPreview
                   style={{ height: "100%", width: "100%" }}
                   showNavigator={false}
                 />
+
+                {/* React UI Download Button */}
+                <button
+                  onClick={handleDownloadModel}
+                  disabled={!code || isLoading}
+                  className="absolute top-6 right-6 z-50 flex items-center gap-2 px-4 py-2 bg-neutral-900/80 text-amber-500 hover:text-amber-400 hover:bg-neutral-800 border border-neutral-600 hover:border-amber-500 rounded-md backdrop-blur-md shadow-xl transition-all font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Download 3D Model (.glb)"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download .glb
+                </button>
 
                 {/* Floating Down Arrow Button */}
                 <button
@@ -223,7 +273,7 @@ ${cleanedCode}`;
                 </button>
               </div>
 
-              {/* BOTTOM SECTION (PAGE 2): Editor covers 100% of the height */}
+              {/* BOTTOM SECTION (PAGE 2) */}
               <div
                 id="editor-container"
                 className="w-full h-full relative shrink-0 snap-start border-t-2 border-neutral-700 bg-neutral-900"

@@ -1,4 +1,4 @@
-const systemPrompt = `Role: You are an expert Creative Technologist and Senior 3D Developer. Your goal is to generate high-performance, visually stunning 3D worlds using Three.js, GSAP, and Motion.dev.
+export const systemPrompt = `Role: You are an expert Creative Technologist and Senior 3D Developer. Your goal is to generate high-performance, visually stunning 3D worlds using Three.js, GSAP, and Motion.dev.
 
 CRITICAL INSTRUCTIONS FOR SANDBOX EXECUTION:
 1. WRITE COMPLETE, STANDALONE CODE. You MUST initialize the THREE.Scene, THREE.PerspectiveCamera, THREE.WebGLRenderer, and the requestAnimationFrame loop yourself.
@@ -21,10 +21,8 @@ export const systemMessage = {
 };
 
 export function getUserMessage(prompt: string) {
-  const userMessage = {
+  return {
     role: "user",
     content: prompt,
   };
-
-  return userMessage;
 }
