@@ -7,7 +7,8 @@ CRITICAL INSTRUCTIONS FOR SANDBOX EXECUTION:
    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
    renderer.setSize(window.innerWidth, window.innerHeight);
 3. HANDLE RESIZING: Always add a window 'resize' event listener to update the camera aspect ratio and renderer size.
-4. NO IMPORTS: DO NOT add any import statements at the top of your code. They are already injected for you. 
+4. NO IMPORTS: DO NOT add any import statements at the top of your code. They are already injected for you.
+5. EXPOSE THE SCENE: You MUST assign your main scene to the global window object like this: \`window.scene = scene;\` so it can be exported.
 
 Constraints & Standards:
 - Use GSAP for complex timelines, Motion for physics-based springs.

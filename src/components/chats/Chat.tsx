@@ -6,7 +6,6 @@ import { getUserMessage, systemMessage } from "@/helpers/prompts";
 import puter from "@heyputer/puter.js";
 import {
   SandpackProvider,
-  SandpackLayout,
   SandpackCodeEditor,
   SandpackPreview,
 } from "@codesandbox/sandpack-react";
@@ -52,9 +51,9 @@ export default function ChatInterface() {
         const messageObj = response?.message as any;
         const rawContent = messageObj?.content || "";
         const cleanedCode = rawContent
-          .replace(/^```(javascript|js|typescript|ts)?\n?/im, "") // Remove opening block
-          .replace(/```\s*$/im, "") // Remove closing block
-          .replace(/^import .*;$/gm, "") // Strip any imports the AI stubbornly included
+          .replace(/^```(javascript|js|typescript|ts)?\n?/im, "")
+          .replace(/```\s*$/im, "")
+          .replace(/^import .*;$/gm, "")
           .trim();
 
         const generatedReasoning =
@@ -63,20 +62,30 @@ export default function ChatInterface() {
           "";
 
         const codeWithImports = `import * as THREE from 'three';
-                                  import gsap from 'gsap';
-                                  import { animate as motionAnimate } from 'motion';
+import gsap from 'gsap';
+import { animate as motionAnimate } from 'motion';
 
-                                  ${cleanedCode}`;
+${cleanedCode}`;
 
         setCode(codeWithImports);
         setReasoning(generatedReasoning);
       } catch (err) {
         console.error("Puter AI Error:", err);
-        setCode(" Failed to generate code. Please try again.");
+        setCode("Failed to generate code. Please try again.");
       } finally {
         setIsLoading(false);
       }
     }
+  }
+
+  // Trigger the download inside the Sandpack iframe
+  function handleDownloadModel() {
+    const iframes = document.querySelectorAll("iframe");
+    iframes.forEach((iframe) => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage("DOWNLOAD_GLTF", "*");
+      }
+    });
   }
 
   return (
@@ -139,10 +148,9 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {/* Crucial Fix: Wrap Provider in a div that strictly fills the section using absolute positioning */}
-        <div className="absolute inset-0 w-full h-full flex flex-col">
+        <div className="absolute inset-0 w-full h-full">
           <SandpackProvider
-            theme="light"
+            theme="dark"
             template="vanilla"
             customSetup={{
               dependencies: {
@@ -177,34 +185,80 @@ export default function ChatInterface() {
               },
             }}
           >
-            {/* Inline styles completely override Sandpack's stubborn internal CSS layout */}
-            <SandpackLayout
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                borderRadius: 0,
-                border: "none",
-              }}
-            >
-              {/* Top Half: Preview strictly takes up 50% */}
-              <SandpackPreview
-                style={{ height: "70%", flex: "1 1 50%" }}
-                showNavigator={false}
-              />
+            {/* Custom Layout Wrapper replacing SandpackLayout */}
+            <div className="w-full h-full overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-neutral-900">
+              {/* TOP SECTION (PAGE 1): Preview covers 100% of the height */}
+              <div
+                id="preview-container"
+                className="w-full h-full relative shrink-0 snap-start bg-black"
+              >
+                {/* Notice we pass strict style height to the component itself */}
+                <SandpackPreview
+                  style={{ height: "100%", width: "100%" }}
+                  showNavigator={false}
+                />
 
-              {/* Bottom Half: Editor strictly takes up 50% and scrolls internally */}
-              <SandpackCodeEditor
-                style={{
-                  height: "30%",
-                  flex: "1 1 50%",
-                  borderTop: "2px solid #404040",
-                  overflow: "auto",
-                }}
-                showTabs={true}
-                showLineNumbers={true}
-              />
-            </SandpackLayout>
+                {/* Floating Down Arrow Button */}
+                <button
+                  onClick={() => {
+                    document
+                      .getElementById("editor-container")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-neutral-900/80 text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full backdrop-blur-md shadow-xl transition-all animate-bounce text-sm font-medium cursor-pointer"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 5v14M19 12l-7 7-7-7" />
+                  </svg>
+                  View Code
+                </button>
+              </div>
+
+              {/* BOTTOM SECTION (PAGE 2): Editor covers 100% of the height */}
+              <div
+                id="editor-container"
+                className="w-full h-full relative shrink-0 snap-start border-t-2 border-neutral-700 bg-neutral-900"
+              >
+                <SandpackCodeEditor
+                  style={{ height: "100%", width: "100%" }}
+                  showTabs={true}
+                  showLineNumbers={true}
+                />
+
+                {/* Floating Up Arrow Button */}
+                <button
+                  onClick={() => {
+                    document
+                      .getElementById("preview-container")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="absolute bottom-6 right-6 z-50 flex items-center justify-center w-10 h-10 bg-neutral-900/80 text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full backdrop-blur-md shadow-xl transition-all cursor-pointer"
+                  title="Back to Preview"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </SandpackProvider>
         </div>
       </section>
