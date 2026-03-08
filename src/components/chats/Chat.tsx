@@ -248,7 +248,7 @@ window.addEventListener('message', (event) => {
                   Download .glb
                 </button>
 
-                {/* Floating Down Arrow Button */}
+                {/* Floating Down Arrow Button - View Code */}
                 <button
                   onClick={() => {
                     document
@@ -284,15 +284,14 @@ window.addEventListener('message', (event) => {
                   showLineNumbers={true}
                 />
 
-                {/* Floating Up Arrow Button */}
+                {/* Floating Up Arrow Button - View Model */}
                 <button
                   onClick={() => {
                     document
                       .getElementById("preview-container")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="absolute bottom-6 right-6 z-50 flex items-center justify-center w-10 h-10 bg-neutral-900/80 text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full backdrop-blur-md shadow-xl transition-all cursor-pointer"
-                  title="Back to Preview"
+                  className="absolute top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-neutral-900/80 text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full backdrop-blur-md shadow-xl transition-all animate-bounce text-sm font-medium cursor-pointer"
                 >
                   <svg
                     width="16"
@@ -306,6 +305,7 @@ window.addEventListener('message', (event) => {
                   >
                     <path d="M12 19V5M5 12l7-7 7 7" />
                   </svg>
+                  View Model
                 </button>
               </div>
             </div>
