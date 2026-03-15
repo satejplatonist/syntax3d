@@ -10,12 +10,26 @@ import {
   SandpackPreview,
 } from "@codesandbox/sandpack-react";
 
+// --- GUARDRAIL CONFIGURATION ---
+const MAX_PROMPT_LENGTH = 600;
+const FORBIDDEN_KEYWORDS = [
+  "ignore previous",
+  "ignore all",
+  "system prompt",
+  "jailbreak",
+  "bypass",
+  "write an essay",
+  "write a poem",
+  "nsfw",
+];
+
 export default function ChatInterface() {
   const [prompt, setPrompt] = useState("");
   const [debouncedPrompt, setDebouncedPrompt] = useState("");
   const [code, setCode] = useState("");
   const [reasoning, setReasoning] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // New error state
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -27,7 +41,22 @@ export default function ChatInterface() {
     };
   }, [prompt]);
 
-  // Trigger the download inside the Sandpack iframe
+  // Client-Side Input Validation
+  function validateInput(input: string): string | null {
+    if (input.length > MAX_PROMPT_LENGTH) {
+      return `Prompt is too long. Please keep it under ${MAX_PROMPT_LENGTH} characters.`;
+    }
+
+    const lowerInput = input.toLowerCase();
+    for (const word of FORBIDDEN_KEYWORDS) {
+      if (lowerInput.includes(word)) {
+        return "Your prompt contains restricted keywords or off-topic requests.";
+      }
+    }
+
+    return null; // Passes validation
+  }
+
   function handleDownloadModel() {
     const iframes = document.querySelectorAll("iframe");
     iframes.forEach((iframe) => {
@@ -43,6 +72,15 @@ export default function ChatInterface() {
       if (!prompt.trim() || isLoading) return;
 
       const currentPrompt = prompt;
+      setErrorMessage(null); // Reset errors
+
+      // 1. Run Input Guardrails
+      const validationError = validateInput(currentPrompt);
+      if (validationError) {
+        setErrorMessage(validationError);
+        return; // Stop execution
+      }
+
       console.log("Submitting prompt:", currentPrompt);
 
       setIsLoading(true);
@@ -66,12 +104,19 @@ export default function ChatInterface() {
           .replace(/^import .*;$/gm, "")
           .trim();
 
+        // 2. Run Output Guardrails
+        // Ensure the response actually looks like Three.js/3D code
+        if (!cleanedCode.includes("THREE") && !cleanedCode.includes("scene")) {
+          throw new Error(
+            "AI returned conversational text instead of valid 3D scene code.",
+          );
+        }
+
         const generatedReasoning =
           messageObj?.reasoning ||
           messageObj?.reasoning_details?.[0]?.text ||
           "";
 
-        // Inject the imports and the hidden download listener
         const codeWithImports = `import * as THREE from 'three';
 import gsap from 'gsap';
 import { animate as motionAnimate } from 'motion';
@@ -100,16 +145,19 @@ window.addEventListener('message', (event) => {
         URL.revokeObjectURL(url);
       },
       (error) => console.error('GLTF export error:', error),
-      { binary: true } // Export as .glb
+      { binary: true }
     );
   }
 });`;
 
         setCode(codeWithImports);
         setReasoning(generatedReasoning);
-      } catch (err) {
-        console.error("Puter AI Error:", err);
-        setCode("Failed to generate code. Please try again.");
+      } catch (err: any) {
+        console.error("Generation Error:", err);
+        setErrorMessage(
+          err.message ||
+            "Failed to generate code. Please ensure your prompt is about 3D shapes.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -124,30 +172,46 @@ window.addEventListener('message', (event) => {
       >
         <div className="border-2 border-neutral-600 hover:border-neutral-500 rounded-md p-4 bg-neutral-900">
           <Input
-            className="bg-neutral-800 border-none border-2 border-neutral-700 text-amber-500 h-24"
-            placeholder="Enter your prompt here ....."
+            className={cn(
+              "bg-neutral-800 border-none border-2 text-amber-500 h-24",
+              errorMessage ? "border-red-500" : "border-neutral-700",
+            )}
+            placeholder="Enter your prompt here to generate a 3D scene..."
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              if (errorMessage) setErrorMessage(null); // Clear error on typing
+            }}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
+            maxLength={MAX_PROMPT_LENGTH + 50} // Hard HTML limit just in case
           />
-          <div className="flex justify-between items-center mt-4">
-            {prompt && (
-              <div
-                className={cn(
-                  prompt !== debouncedPrompt
-                    ? "text-sm text-emerald-500"
-                    : "text-sm text-cyan-500",
-                )}
-              >
-                {prompt !== debouncedPrompt ? "Typing..." : "Ready (Enter)"}
+
+          {/* Status & Error Rendering */}
+          <div className="flex flex-col mt-4 gap-2">
+            {errorMessage && (
+              <div className="text-sm text-red-400 font-medium">
+                ⚠️ {errorMessage}
               </div>
             )}
-            {isLoading && (
-              <div className="text-sm text-amber-500 animate-pulse">
-                AI is processing...
-              </div>
-            )}
+            <div className="flex justify-between items-center">
+              {prompt && !errorMessage && (
+                <div
+                  className={cn(
+                    prompt !== debouncedPrompt
+                      ? "text-sm text-emerald-500"
+                      : "text-sm text-cyan-500",
+                  )}
+                >
+                  {prompt !== debouncedPrompt ? "Typing..." : "Ready (Enter)"}
+                </div>
+              )}
+              {isLoading && (
+                <div className="text-sm text-amber-500 animate-pulse">
+                  AI is processing...
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -169,6 +233,7 @@ window.addEventListener('message', (event) => {
         className="w-1/2 h-full border-2 border-neutral-600 hover:border-neutral-500 rounded-md bg-neutral-900 overflow-hidden relative"
         id="code-sandbox"
       >
+        {/* ... (Your existing Sandpack code remains exactly the same below here) ... */}
         {isLoading && !code && (
           <div className="absolute inset-0 z-10 bg-neutral-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-neutral-500">
             <div className="w-8 h-8 border-2 border-t-amber-500 border-neutral-700 rounded-full animate-spin" />
@@ -214,7 +279,6 @@ window.addEventListener('message', (event) => {
             }}
           >
             <div className="w-full h-full overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-neutral-900">
-              {/* TOP SECTION (PAGE 1) */}
               <div
                 id="preview-container"
                 className="w-full h-full relative shrink-0 snap-start bg-black"
@@ -223,8 +287,6 @@ window.addEventListener('message', (event) => {
                   style={{ height: "100%", width: "100%" }}
                   showNavigator={false}
                 />
-
-                {/* React UI Download Button */}
                 <button
                   onClick={handleDownloadModel}
                   disabled={!code || isLoading}
@@ -247,8 +309,6 @@ window.addEventListener('message', (event) => {
                   </svg>
                   Download .glb
                 </button>
-
-                {/* Floating Down Arrow Button - View Code */}
                 <button
                   onClick={() => {
                     document
@@ -272,8 +332,6 @@ window.addEventListener('message', (event) => {
                   View Code
                 </button>
               </div>
-
-              {/* BOTTOM SECTION (PAGE 2) */}
               <div
                 id="editor-container"
                 className="w-full h-full relative shrink-0 snap-start border-t-2 border-neutral-700 bg-neutral-900"
@@ -283,8 +341,6 @@ window.addEventListener('message', (event) => {
                   showTabs={true}
                   showLineNumbers={true}
                 />
-
-                {/* Floating Up Arrow Button - View Model */}
                 <button
                   onClick={() => {
                     document
