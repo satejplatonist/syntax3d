@@ -29,7 +29,7 @@ export default function ChatInterface() {
   const [code, setCode] = useState("");
   const [reasoning, setReasoning] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // New error state
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -54,7 +54,7 @@ export default function ChatInterface() {
       }
     }
 
-    return null; // Passes validation
+    return null;
   }
 
   function handleDownloadModel() {
@@ -72,13 +72,12 @@ export default function ChatInterface() {
       if (!prompt.trim() || isLoading) return;
 
       const currentPrompt = prompt;
-      setErrorMessage(null); // Reset errors
+      setErrorMessage(null);
 
-      // 1. Run Input Guardrails
       const validationError = validateInput(currentPrompt);
       if (validationError) {
         setErrorMessage(validationError);
-        return; // Stop execution
+        return;
       }
 
       console.log("Submitting prompt:", currentPrompt);
@@ -104,8 +103,6 @@ export default function ChatInterface() {
           .replace(/^import .*;$/gm, "")
           .trim();
 
-        // 2. Run Output Guardrails
-        // Ensure the response actually looks like Three.js/3D code
         if (!cleanedCode.includes("THREE") && !cleanedCode.includes("scene")) {
           throw new Error(
             "AI returned conversational text instead of valid 3D scene code.",
@@ -180,14 +177,13 @@ window.addEventListener('message', (event) => {
             value={prompt}
             onChange={(e) => {
               setPrompt(e.target.value);
-              if (errorMessage) setErrorMessage(null); // Clear error on typing
+              if (errorMessage) setErrorMessage(null);
             }}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
-            maxLength={MAX_PROMPT_LENGTH + 50} // Hard HTML limit just in case
+            maxLength={MAX_PROMPT_LENGTH + 50}
           />
 
-          {/* Status & Error Rendering */}
           <div className="flex flex-col mt-4 gap-2">
             {errorMessage && (
               <div className="text-sm text-red-400 font-medium">
@@ -215,7 +211,6 @@ window.addEventListener('message', (event) => {
           </div>
         </div>
 
-        {/* Reasoning Display Box */}
         <div className="flex-1 border-2 border-neutral-800 rounded-md p-4 bg-neutral-900 overflow-y-auto">
           <p className="text-xs font-bold text-neutral-500 mb-2 uppercase tracking-tighter">
             System Reasoning
@@ -233,7 +228,16 @@ window.addEventListener('message', (event) => {
         className="w-1/2 h-full border-2 border-neutral-600 hover:border-neutral-500 rounded-md bg-neutral-900 overflow-hidden relative"
         id="code-sandbox"
       >
-        {/* ... (Your existing Sandpack code remains exactly the same below here) ... */}
+        {/* 🔥 FIX: Force Sandpack internal containers to inherit 100% height */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          .sp-preview, .sp-preview-container, .sp-preview-iframe { height: 100% !important; min-height: 100% !important; }
+          .sp-editor, .cm-editor, .cm-scroller { height: 100% !important; min-height: 100% !important; }
+        `,
+          }}
+        />
+
         {isLoading && !code && (
           <div className="absolute inset-0 z-10 bg-neutral-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-neutral-500">
             <div className="w-8 h-8 border-2 border-t-amber-500 border-neutral-700 rounded-full animate-spin" />
@@ -278,15 +282,21 @@ window.addEventListener('message', (event) => {
               },
             }}
           >
-            <div className="w-full h-full overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-neutral-900">
+            {/* 🔥 FIX: Changed to absolute inset-0 to prevent SandpackProvider from breaking the height chain */}
+            <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-neutral-900">
+              {/* PAGE 1: PREVIEW (ON TOP) */}
               <div
                 id="preview-container"
                 className="w-full h-full relative shrink-0 snap-start bg-black"
               >
-                <SandpackPreview
-                  style={{ height: "100%", width: "100%" }}
-                  showNavigator={false}
-                />
+                {/* Wrapped Preview in absolute inset-0 to force bounds */}
+                <div className="absolute inset-0">
+                  <SandpackPreview
+                    style={{ height: "100%", width: "100%" }}
+                    showNavigator={false}
+                  />
+                </div>
+
                 <button
                   onClick={handleDownloadModel}
                   disabled={!code || isLoading}
@@ -309,6 +319,7 @@ window.addEventListener('message', (event) => {
                   </svg>
                   Download .glb
                 </button>
+
                 <button
                   onClick={() => {
                     document
@@ -332,15 +343,21 @@ window.addEventListener('message', (event) => {
                   View Code
                 </button>
               </div>
+
+              {/* PAGE 2: EDITOR (ON BOTTOM) */}
               <div
                 id="editor-container"
                 className="w-full h-full relative shrink-0 snap-start border-t-2 border-neutral-700 bg-neutral-900"
               >
-                <SandpackCodeEditor
-                  style={{ height: "100%", width: "100%" }}
-                  showTabs={true}
-                  showLineNumbers={true}
-                />
+                {/* Wrapped CodeEditor in absolute inset-0 to force bounds */}
+                <div className="absolute inset-0">
+                  <SandpackCodeEditor
+                    style={{ height: "100%", width: "100%" }}
+                    showTabs={true}
+                    showLineNumbers={true}
+                  />
+                </div>
+
                 <button
                   onClick={() => {
                     document
