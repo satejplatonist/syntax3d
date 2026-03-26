@@ -162,18 +162,22 @@ window.addEventListener('message', (event) => {
   }
 
   return (
-    <main className="w-full h-full flex flex-row items-center justify-center p-12 gap-4 bg-neutral-950 text-white">
+    <main className="w-full h-full flex flex-row items-center justify-center p-8 gap-6 bg-[#09090b] text-white selection:bg-amber-500/30">
       <section
-        className="w-1/2 h-full flex flex-col gap-4"
+        className="w-1/2 h-full flex flex-col gap-6"
         id="chat-interface-section"
       >
-        <div className="border-2 border-neutral-600 hover:border-neutral-500 rounded-md p-4 bg-neutral-900">
+        {/* --- SLEEK INPUT CARD --- */}
+        <div 
+          className={cn(
+            "relative flex flex-col bg-[#121214] border border-white/10 rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.5)] transition-all duration-500",
+            "focus-within:border-amber-500/40 focus-within:ring-4 focus-within:ring-amber-500/10 focus-within:shadow-[0_0_40px_-10px_rgba(245,158,11,0.15)]",
+            errorMessage && "border-red-500/50 focus-within:border-red-500/50 focus-within:ring-red-500/10"
+          )}
+        >
           <Input
-            className={cn(
-              "bg-neutral-800 border-none border-2 text-amber-500 h-24",
-              errorMessage ? "border-red-500" : "border-neutral-700",
-            )}
-            placeholder="Enter your prompt here to generate a 3D scene..."
+            className="bg-transparent border-none text-neutral-100 placeholder:text-neutral-600 focus-visible:ring-0 text-lg h-24 p-0 shadow-none"
+            placeholder="Describe a 3D scene to generate..."
             value={prompt}
             onChange={(e) => {
               setPrompt(e.target.value);
@@ -184,64 +188,88 @@ window.addEventListener('message', (event) => {
             maxLength={MAX_PROMPT_LENGTH + 50}
           />
 
-          <div className="flex flex-col mt-4 gap-2">
-            {errorMessage && (
-              <div className="text-sm text-red-400 font-medium">
-                ⚠️ {errorMessage}
+          <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5 min-h-[28px]">
+            {errorMessage ? (
+              <div className="text-sm text-red-400 font-medium flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                {errorMessage}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span 
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-colors duration-300",
+                    isLoading ? "bg-amber-500 animate-pulse" : (prompt ? "bg-emerald-500" : "bg-neutral-600")
+                  )}
+                />
+                <span className="text-xs font-medium text-neutral-500 uppercase tracking-widest">
+                  {isLoading ? "Synthesizing 3D Geometry..." : (prompt !== debouncedPrompt ? "Typing..." : "Ready")}
+                </span>
               </div>
             )}
-            <div className="flex justify-between items-center">
-              {prompt && !errorMessage && (
-                <div
-                  className={cn(
-                    prompt !== debouncedPrompt
-                      ? "text-sm text-emerald-500"
-                      : "text-sm text-cyan-500",
-                  )}
-                >
-                  {prompt !== debouncedPrompt ? "Typing..." : "Ready (Enter)"}
-                </div>
-              )}
-              {isLoading && (
-                <div className="text-sm text-amber-500 animate-pulse">
-                  AI is processing...
-                </div>
-              )}
+            
+            <div className="text-xs text-neutral-600 font-mono">
+              {prompt.length} / {MAX_PROMPT_LENGTH}
             </div>
           </div>
         </div>
 
-        <div className="flex-1 border-2 border-neutral-800 rounded-md p-4 bg-neutral-900 overflow-y-auto">
-          <p className="text-xs font-bold text-neutral-500 mb-2 uppercase tracking-tighter">
-            System Reasoning
-          </p>
-          <div className="text-sm text-neutral-400 whitespace-pre-wrap italic">
-            {isLoading && !reasoning
-              ? "Analyzing 3D geometry constraints..."
-              : reasoning}
+        {/* --- SLEEK REASONING CARD --- */}
+        <div className="flex-1 bg-[#121214] border border-white/10 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.5)] overflow-hidden flex flex-col relative group">
+          {/* Subtle top inner glow */}
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+          
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-1.5 bg-neutral-800/50 rounded-md border border-white/5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+                <polyline points="4 7 4 4 20 4 20 7" />
+                <line x1="9" y1="20" x2="15" y2="20" />
+                <line x1="12" y1="4" x2="12" y2="20" />
+              </svg>
+            </div>
+            <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+              System Reasoning
+            </p>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto text-sm text-neutral-400 leading-relaxed whitespace-pre-wrap font-mono custom-scrollbar pr-2">
+            {isLoading && !reasoning ? (
+              <span className="text-neutral-600 animate-pulse">Initializing spatial analysis...</span>
+            ) : (
+              <span className="text-neutral-300">{reasoning || "Awaiting instructions."}</span>
+            )}
           </div>
         </div>
       </section>
 
       {/* Code Sandbox Section */}
       <section
-        className="w-1/2 h-full border-2 border-neutral-600 hover:border-neutral-500 rounded-md bg-neutral-900 overflow-hidden relative"
+        className="w-1/2 h-full border border-white/10 rounded-2xl bg-[#0d0d0f] shadow-[0_8px_30px_rgb(0,0,0,0.6)] overflow-hidden relative"
         id="code-sandbox"
       >
-        {/* 🔥 FIX: Force Sandpack internal containers to inherit 100% height */}
+        {/* Force Sandpack internal containers and custom scrollbar */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
           .sp-preview, .sp-preview-container, .sp-preview-iframe { height: 100% !important; min-height: 100% !important; }
           .sp-editor, .cm-editor, .cm-scroller { height: 100% !important; min-height: 100% !important; }
+          
+          /* Custom Scrollbar for Reasoning */
+          .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
         `,
           }}
         />
 
         {isLoading && !code && (
-          <div className="absolute inset-0 z-10 bg-neutral-900/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-neutral-500">
-            <div className="w-8 h-8 border-2 border-t-amber-500 border-neutral-700 rounded-full animate-spin" />
-            <p className="font-mono text-xs">Generating Three.js Scene...</p>
+          <div className="absolute inset-0 z-20 bg-[#09090b]/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 text-amber-500 transition-all duration-500">
+            <div className="relative flex items-center justify-center w-12 h-12">
+              <div className="absolute inset-0 border-2 border-amber-500/20 rounded-full"></div>
+              <div className="absolute inset-0 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className="font-mono text-xs tracking-widest uppercase">Rendering Scene...</p>
           </div>
         )}
 
@@ -263,7 +291,7 @@ window.addEventListener('message', (event) => {
 <head>
   <title>Three.js Sandbox</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #050505; }
+    body { margin: 0; overflow: hidden; background-color: #09090b; }
     canvas { display: block; width: 100vw; height: 100vh; }
   </style>
 </head>
@@ -282,14 +310,13 @@ window.addEventListener('message', (event) => {
               },
             }}
           >
-            {/* 🔥 FIX: Changed to absolute inset-0 to prevent SandpackProvider from breaking the height chain */}
-            <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-neutral-900">
+            <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scroll-smooth snap-y snap-mandatory bg-black">
+              
               {/* PAGE 1: PREVIEW (ON TOP) */}
               <div
                 id="preview-container"
-                className="w-full h-full relative shrink-0 snap-start bg-black"
+                className="w-full h-full relative shrink-0 snap-start bg-[#09090b]"
               >
-                {/* Wrapped Preview in absolute inset-0 to force bounds */}
                 <div className="absolute inset-0">
                   <SandpackPreview
                     style={{ height: "100%", width: "100%" }}
@@ -300,56 +327,35 @@ window.addEventListener('message', (event) => {
                 <button
                   onClick={handleDownloadModel}
                   disabled={!code || isLoading}
-                  className="absolute top-6 right-6 z-50 flex items-center gap-2 px-4 py-2 bg-neutral-900/80 text-amber-500 hover:text-amber-400 hover:bg-neutral-800 border border-neutral-600 hover:border-amber-500 rounded-md backdrop-blur-md shadow-xl transition-all font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="absolute top-6 right-6 z-50 flex items-center gap-2 px-5 py-2.5 bg-black/40 text-amber-500 hover:text-amber-400 hover:bg-black/60 border border-white/10 hover:border-amber-500/50 rounded-full backdrop-blur-xl shadow-2xl transition-all duration-300 text-sm font-semibold tracking-wide cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed group"
                   title="Download 3D Model (.glb)"
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:-translate-y-0.5 group-hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="7 10 12 15 17 10" />
                     <line x1="12" y1="15" x2="12" y2="3" />
                   </svg>
-                  Download .glb
+                  Export .glb
                 </button>
 
                 <button
                   onClick={() => {
-                    document
-                      .getElementById("editor-container")
-                      ?.scrollIntoView({ behavior: "smooth" });
+                    document.getElementById("editor-container")?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-neutral-900/80 text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full backdrop-blur-md shadow-xl transition-all animate-bounce text-sm font-medium cursor-pointer"
+                  className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center w-12 h-12 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-full backdrop-blur-xl shadow-2xl transition-all duration-300 animate-bounce cursor-pointer group"
+                  title="View Source Code"
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover:opacity-100">
                     <path d="M12 5v14M19 12l-7 7-7-7" />
                   </svg>
-                  View Code
                 </button>
               </div>
 
               {/* PAGE 2: EDITOR (ON BOTTOM) */}
               <div
                 id="editor-container"
-                className="w-full h-full relative shrink-0 snap-start border-t-2 border-neutral-700 bg-neutral-900"
+                className="w-full h-full relative shrink-0 snap-start border-t border-white/10 bg-[#121214]"
               >
-                {/* Wrapped CodeEditor in absolute inset-0 to force bounds */}
                 <div className="absolute inset-0">
                   <SandpackCodeEditor
                     style={{ height: "100%", width: "100%" }}
@@ -360,25 +366,14 @@ window.addEventListener('message', (event) => {
 
                 <button
                   onClick={() => {
-                    document
-                      .getElementById("preview-container")
-                      ?.scrollIntoView({ behavior: "smooth" });
+                    document.getElementById("preview-container")?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="absolute top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-neutral-900/80 text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full backdrop-blur-md shadow-xl transition-all animate-bounce text-sm font-medium cursor-pointer"
+                  className="absolute top-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center w-12 h-12 bg-black/40 hover:bg-black/60 text-white border border-white/10 hover:border-white/20 rounded-full backdrop-blur-xl shadow-2xl transition-all duration-300 animate-bounce cursor-pointer group"
+                  title="Back to Preview"
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover:opacity-100">
                     <path d="M12 19V5M5 12l7-7 7 7" />
                   </svg>
-                  View Model
                 </button>
               </div>
             </div>
